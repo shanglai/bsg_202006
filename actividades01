@@ -1,0 +1,114 @@
+
+#Instalar geany
+sudo apt-get install geany
+
+#Abrir en geany el archivo <etc/hadoop/core-site.xml> y cambiar este texto (localhost por 127.0.0.1)
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://127.0.0.1:9000</value>
+    </property>
+</configuration>
+
+#Guardar el archivo
+
+#Ir al folder de Hadoop
+cd ~/apps/hadoop
+
+#Vaciar los archivos de configuración de yarn-site y mapred-site:
+<configuration>
+</configuration>
+
+#Formatear el HDFS (Precaución)
+bin/hdfs namenode -format
+
+#Iniciar HDFS
+sbin/start-dfs.sh
+
+#Revisar los procesos
+ps -fea | grep -i hadoop
+
+#Ir al navegador
+http://localhost:9870/
+
+#Crear folders en el HDFS
+bin/hdfs dfs -mkdir /user /user/bigdata /user/bigdata/input
+
+#Revisarlos en el HDFS
+bin/hdfs dfs -ls /user/bigdata
+
+#Copiar los datos de input al HDFS
+bin/hdfs dfs -put etc/hadoop/* input
+
+#Revisar los archivos en el HDFS
+bin/hdfs dfs -ls /user/bigdata/input/*
+
+#Ejecutar un grep y un wordcount
+bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.1.2.jar wordcount /user/bigdata/input /user/bigdata/output
+bin/hdfs dfs -ls /user/bigdata/output
+bin/hdfs dfs -cat /user/bigdata/output/part-r-00000
+
+bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.1.2.jar grep /user/bigdata/input /user/bigdata/output2 'hdfs[a-z]+'
+
+#Ahora sí:
+#Apagar hadoop (HDFS)
+#Añadir los datos de mapred y yarn
+
+#Luego ./iniciar.sh
+
+#Y ejecutar el mapreduce
+bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.1.2.jar grep /user/bigdata/input /user/bigdata/output2 'hdfs[a-z]+'
+
+
+------
+Spark y Zeppelin
+
+#Docker ya está en el sistema
+
+sudo docker run hello-world
+
+#sudo groupadd docker
+#sudo usermod -aG docker ${USER}
+#su -s ${USER}
+
+sudo docker pull dylanmei/zeppelin
+sudo docker run --rm -p 8080:8080 dylanmei/zeppelin
+
+----
+%sh
+wget -c http://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip
+hdfs dfs -mkdir /tmp
+unzip bank.zip
+hdfs dfs -put bank.csv /tmp
+---
+val bankText = sc.textFile("/tmp/bank-full.csv")
+
+case class Bank(age:Integer, job:String, marital : String, education : String, balance : Integer)
+
+/*
+Parseo:
+Divide cada linea, filtra el header,
+mapea a la case class Bank
+*/
+
+val bank = bankText.map(s=>s.split(";")).filter(s=>s(0)!="\"age\"").map(
+    s=>Bank(s(0).toInt, 
+            s(1).replaceAll("\"", ""),
+            s(2).replaceAll("\"", ""),
+            s(3).replaceAll("\"", ""),
+            s(5).replaceAll("\"", "").toInt
+        )
+)
+
+//Convierte a DataFrame de Spark
+bank.toDF().registerTempTable("bank")
+
+---
+%sql
+select * from bank limit 30;
+
+%sql
+select age, count(1) from bank where age < 50 group by age order by age;
+
+
+
