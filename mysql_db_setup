@@ -1,0 +1,40 @@
+
+create database bsg;
+use bsg;
+create table test1 (user_id int,user_name varchar(20));
+insert into test1 values
+(1,'yerson'),
+(2,'magaly'),
+(3,'gustavo'),
+(4,'miguel'),
+(5,'andre'),
+(6,'jesus');
+
+create table test2 (user_id int,balance float);
+insert into test2 values
+(1,99.1),
+(2,30.0),
+(4,0.0),
+(5,-1.5);
+
+select * from test1;
+select * from test2;
+
+--crea usuario
+
+create user 'bigdata'@'%' identified by 'bigdata';
+grant all privileges on *.* to 'bigdata'@'%';
+
+--alterar las direcciones de entrada en /etc/mysql/mysql.conf.d/mysqld.cnf:
+
+#bind-address           = 127.0.0.1
+bind-address           = 0.0.0.0
+#
+sudo service mysql restart
+sudo service mysql status
+
+
+
+
+
+
