@@ -1,0 +1,241 @@
+
+
+#Instalar varios programas
+sudo apt-get install vim git geany ssh openssl rsync
+
+#Crear folders
+cd ~; mkdir apps tools repos data scripts
+
+#Instalar java 8
+sudo apt install openjdk-8-jdk
+
+#Descargar los frameworks
+cd ~/apps
+wget -c https://downloads.apache.org/hadoop/common/hadoop-2.10.0/hadoop-2.10.0.tar.gz
+wget -c https://downloads.apache.org/sqoop/1.4.7/sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz
+wget -c https://downloads.apache.org/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
+
+#Descomprimirlos
+tar -xvzf hadoop*
+tar -xvzf sqoop*
+tar -xvzf apache-hive*
+
+#Borrar los *.tar.gz
+#rm *gz
+
+Crear links simbólicos
+ln -s hadoop-2.10.0 hadoop
+ln -s sqoop-1.4.7.bin__hadoop-2.6.0 sqoop
+ln -s apache-hive-3.1.2-bin hive
+
+#Validar los directorios más los links simbólicos
+ls -ltr
+
+#Añadir configuración de variables al final de ~/.bashrc y ~/.profile
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre
+export BD_APPS=/home/bigdata/apps
+export HADOOP_HOME=$BD_APPS/hadoop
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export SQOOP_HOME=$BD_APPS/sqoop
+export HIVE_HOME=$BD_APPS/hive
+PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$SQOOP_HOME/bin:$HIVE_HOME/bin
+
+
+
+
+
+
+#Actualizar las variables de entorno
+source ~/.bashrc
+
+#Añadir el JAVA_HOME en /home/bigdata/apps/hadoop/etc/hadoop/hadoop-env.sh
+# The java implementation to use.
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre
+
+#Seguir la instalación en https://hadoop.apache.org/docs/r2.10.0/hadoop-project-dist/hadoop-common/SingleCluster.html
+
+#Instalar y probar SSH sin password
+ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+#Probar con:
+ssh localhost
+#Salir del SSH con Ctrl+D
+
+#Modificar la info en los tags configuration en los archivos de $HADOOP_HOME/etc/hadoop/*-site.xml:
+
+#core-site.xml
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+
+#hdfs-site.xml
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+</configuration>
+
+#Formatear el Namenode
+hdfs namenode -format
+
+#Levantar el HDFS
+start-dfs.sh
+
+#Validar servicios
+ps -fea | grep -i hadoop
+
+#Crear directorios en HDFS
+hdfs dfs -mkdir /user /user/bigdata
+
+#Crear directorio de Hive
+hdfs dfs -mkdir /user/hive /user/hive/warehouse
+hdfs dfs -chmod -R 1777 /user/hive
+
+#Validar  directorio
+hdfs dfs -ls /user/hive
+
+#Modificar en $HADOOP_HOME/etc/hadoop los archivos de mapred-site.xml y yarn-site.xml
+
+#mapred-site.xml
+cp mapred-site.xml.template mapred-site.xml
+vi mapred-site.xml
+
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+</configuration>
+
+#yarn-site.xml
+<configuration>
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+</configuration>
+
+#Validar YARN
+ps -fea | grep -i manager
+
+#Revisar interfaces web
+http://localhost:50070
+http://localhost:8088
+
+
+#Configurar Sqoop
+cd $SQOOP_HOME/conf
+cp sqoop-env-template.sh sqoop-env.sh
+
+#Editar sqoop-env.sh
+
+#Set path to where bin/hadoop is available
+export HADOOP_COMMON_HOME=/home/bigdata/apps/hadoop
+
+#Set path to where hadoop-*-core.jar is available
+export HADOOP_MAPRED_HOME=/home/bigdata/apps/hadoop
+
+#Descargar el conector de mysql-5 en ~/tools
+#Descomprimirlo
+cd ~/tools
+tar -xvzf mysql-connector-java-5.1.49.tar.gz
+cd mysql-connector-java-5.1.49/
+ls
+
+#Copiar los jars a la carpeta lib de Sqoop:
+cp *jar $SQOOP_HOME/lib/.
+
+#Validar con:
+sqoop version
+
+#Listar tablas
+sqoop list-tables --connect jdbc:mysql://167.172.134.198/bsg --username bigdata --password bigdata
+
+#Traer tablas al HDFS
+sqoop import --connect jdbc:mysql://167.172.134.198/bsg --username bigdata --password bigdata --table test1 -m 1
+sqoop import --connect jdbc:mysql://167.172.134.198/bsg --username bigdata --password bigdata --table test2 -m 1
+sqoop import --query 'select t1.user_id,t1.user_name,t2.balance from test1 t1 left join test2 t2 on t1.user_id= t2.user_id where $CONDITIONS' --connect jdbc:mysql://167.172.134.198/bsg --username bigdata --password bigdata -m 1 --target-dir /user/bigdata/resultado
+
+#Validar
+hdfs dfs -ls /user/bigdata/*
+
+
+-----
+
+#HIVE
+#Crear archivo site:
+cd $HIVE_HOME/conf
+cp hive-default.xml.template hive-site.xml
+cp hive-env.sh.template hive-env.sh
+
+#Añadir a hive-env.sh:
+# Set HADOOP_HOME to point to a specific hadoop install directory
+# HADOOP_HOME=${bin}/../../hadoop
+export HADOOP_HOME=/home/bigdata/apps/hadoop
+
+#Añadir derby
+$HIVE_HOME/bin/schematool -dbType derby -initSchema
+
+
+/home/bigdata/apps/apache-hive-3.1.2-bin/conf/hive-site.xml
+
+
+
+
+#Descargar Nifi
+
+cd ~/apps; wget -c https://downloads.apache.org/nifi/1.11.4/nifi-1.11.4-bin.tar.gz
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
