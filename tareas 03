@@ -1,0 +1,18 @@
+sudo ufw allow 10000/tcp
+sudo ufw allow 10002/tcp
+sudo ufw allow 5432/tcp
+sudo ufw allow 8042/tcp
+sudo ufw allow 8188/tcp
+sudo ufw allow 10020/tcp
+sudo ufw allow 19888/tcp
+sudo ufw allow 8030/tcp
+sudo ufw allow 8032/tcp
+sudo ufw allow 8088/tcp
+sudo ufw allow 50075/tcp
+sudo ufw allow 50075/tcp
+sudo ufw allow 50075/tcp
+sudo ufw allow 8020/tcp
+sudo ufw allow 50070/tcp
+
+cd repos; git clone https://github.com/shanglai/docker-hive.git
+
