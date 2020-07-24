@@ -1,0 +1,20 @@
+
+
+#Instalar varios programas
+sudo apt-get install vim git geany ssh openssl rsync
+
+#Crear folders
+cd ~; mkdir apps tools repos data scripts
+
+#Instalar java 8
+sudo apt install openjdk-8-jdk
+
+#Descargar y descomprimir
+cd ~/apps; 
+wget -c https://downloads.apache.org/flume/1.9.0/apache-flume-1.9.0-bin.tar.gz
+wget -c https://downloads.apache.org/spark/spark-2.4.6/spark-2.4.6-bin-hadoop2.7.tgz
+wget -c https://downloads.apache.org/kafka/2.5.0/kafka_2.12-2.5.0.tgz
+wget -c https://downloads.apache.org/nifi/1.11.4/nifi-1.11.4-bin.tar.gz
+wget -c https://downloads.apache.org/hadoop/common/hadoop-2.7.7/hadoop-2.7.7.tar.gz
+
+tar -xvzf ¨*flume*
