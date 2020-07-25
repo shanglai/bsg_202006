@@ -1,0 +1,69 @@
+
+cd /home/bsg/apps/kafka_2.12-2.5.0;
+#Iniciar zk
+bin/zookeeper-server-start.sh config/zookeeper.properties
+#Iniciar Kafka server
+bin/kafka-server-start.sh config/server.properties
+#Crear tópico
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic test
+#Listar tópicos
+bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+#EN OTRA VENTANA: Iniciar el producer
+bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic test
+#Escribir algunos mensajes
+#EN OTRA VENTANA: Iniciar el consumer y obtener los mensajes desde el inicio
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test --from-beginning
+#Crear nuevos brokers y editarlos:
+cp config/server.properties config/server-1.properties
+cp config/server.properties config/server-2.properties
+#CONTENIDO:
+config/server-1.properties:
+    broker.id=1
+    listeners=PLAINTEXT://:9093
+    log.dirs=/tmp/kafka-logs-1
+ 
+config/server-2.properties:
+    broker.id=2
+    listeners=PLAINTEXT://:9094
+    log.dirs=/tmp/kafka-logs-2
+#Iniciar los dos nuevos nodos:
+bin/kafka-server-start.sh config/server-1.properties &
+bin/kafka-server-start.sh config/server-2.properties &
+#Crear nuevo tópico (FR 3):
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+#Describir tópicos:
+bin/kafka-topics.sh --describe --bootstrap-server localhost:9092 --topic my-replicated-topic
+#El inicial:
+bin/kafka-topics.sh --describe --bootstrap-server localhost:9092 --topic test
+#Abrir un producer hacia el tópico nuevo:
+bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my-replicated-topic
+#Consumir los mensajes del tópico 2
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic my-replicated-topic
+#TOLERANCIA A FALLOS:
+#Eliminar el primer broker:
+ps aux | grep server-1.properties
+#Obtiene el proceso
+kill -9 <proceso>
+#Verificamos el estado del tópico y validamos el líder:
+bin/kafka-topics.sh --describe --bootstrap-server localhost:9092 --topic my-replicated-topic
+#Validamos la disponibilidad de mensajes:
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic my-replicated-topic
+#Listar los grupos
+bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+
+#Ejecución y almacenamiento de mensajes desde otras fuentes:
+bin/connect-standalone.sh config/connect-standalone.properties config/connect-file-source.properties config/connect-file-sink.properties
+
+#Precaución - borrado de tópicos
+bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic 'test*'
+bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic '.*test.*'
+
+#Creación de source con flume
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic flume-test
+
+
+#Ejecución del source con flume
+hhflume;
+bin/flume-ng agent --conf conf --conf-file conf/kafka.properties  --name agent1 -Dflume.root.logger=DEBUG,console
+
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic flume-test
