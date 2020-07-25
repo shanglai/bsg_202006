@@ -1,0 +1,20 @@
+
+El hello world de Spark Streaming
+Con netcat
+
+https://spark.apache.org/docs/2.4.0/streaming-programming-guide.html
+
+Si lo corremos con python, nos marca error.
+
+Para correrlo con Python:
+- Primero hay que instalar dependencias:
+- Ya contamos con python 3 => hacer un symlink de python3 a python
+- Descargar pip
+- Instalar numpy
+
+Ahora sí:
+- En una ventana: nc -lk 9999
+- En otra:
+hhspark
+bin/spark-submit examples/src/main/python/streaming/network_wordcount.py localhost 9999
+
