@@ -1,0 +1,68 @@
+
+
+docker pull dylanmei/zeppelin
+docker run --rm -p 8080:8080 dylanmei/zeppelin
+
+
+
+
+import org.apache.spark._
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql._
+import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.clustering.KMeans
+
+val sqlContext = new SQLContext(sc)
+import sqlContext.implicits._
+import sqlContext._
+
+
+%sh wget -c https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip
+
+
+val schema = StructType(Array(
+    StructField("age", IntegerType, true),
+    StructField("job", StringType, true),
+    StructField("marital", StringType, true),
+    StructField("education", StringType, true),
+    StructField("default", StringType, true),
+    StructField("balance", DoubleType, true),
+    StructField("housing", StringType, true),
+    StructField("loan", StringType, true),
+    StructField("contact", StringType, true),
+    StructField("day", IntegerType, true),
+    StructField("month", StringType, true),
+    StructField("duration", IntegerType, true),
+    StructField("campaign", IntegerType, true),
+    StructField("pdays", IntegerType, true),
+    StructField("previous", StringType, true),
+    StructField("poutcome", StringType, true),
+    StructField("y", StringType, true)
+    ))
+
+
+val df = sqlContext.read.format("com.databricks.spark.csv")
+    .option("header", "true")
+    .option("delimiter",";")
+    .schema(schema).load("bank-full.csv")
+
+
+val featureCols = Array("age","balance")
+val assembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
+val df2 = assembler.transform(df)
+
+#Ejemplo, no es útil para clustering (no supervisado), sino para supervisado-
+val Array(trainingData, testData) = df2.randomSplit(Array(0.7,0.3))
+
+
+val kmeans = new KMeans().setK(8).setFeaturesCol("features").setPredictionCol("prediction")
+val model = kmeans.fit(df2)
+val categories = model.transform(testData)
+
+categories.show()
+
+z.show(categories.select($"age",$"balance",$"prediction").groupBy("age","balance","prediction").agg(count("prediction")).orderBy("age","balance","prediction"))
+
+
