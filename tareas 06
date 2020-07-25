@@ -1,0 +1,47 @@
+
+
+#Descargar el git
+cd ~/repos
+git clone https://github.com/sparkbyexamples/spark-examples.git
+
+#Dentro, ir a spark-streaming
+
+#Hay que añadir un par de cosas:
+cd ~/repos/spark-examples/spark-streaming/src/main/scala/com/sparkbyexamples/spark/streaming/kafka
+ls
+vi SparkStreamingConsumeKafka
+#Cambiar el servidor de Kafka
+.option("kafka.bootstrap.servers", "localhost:9092")
+#Opcional, el tópico al que se va a suscribir:
+.option("subscribe", "topic_text")
+
+#Añadir la dependencia de sql en el pom:
+cd ~/repos/spark-examples/spark-streaming
+vi pom.xml
+<dependency>
+    <groupId>org.apache.spark</groupId>
+    <artifactId>spark-sql_2.11</artifactId>
+    <version>${spark.version}</version>
+</dependency>
+
+#Y al final,crear un paquete con mvn:
+mvn clean package
+
+#Tomar el spark*jar de target y copiarlo al home de spark:
+cp target/spark-streaming*jar $BD_HOME/spark/.
+
+#Iniciar el kafka-server y crear el tópico
+hhkafka
+extra/ini-zk.sh
+extra/ini-kafka.sh
+bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic topic_text
+
+#Ir al home de spark y ejecutar con spark-submit
+bin/spark-submit --class com.sparkbyexamples.spark.streaming.kafka.SparkStreamingConsumeKafka --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.0 spark-streaming-1.0-SNAPSHOT.jar
+
+#Levantar un producer y ver la magia:
+bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic topic_text
+
+
+
+#Actividad: Vincular el tópico con un source de flume en python.
